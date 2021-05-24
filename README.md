@@ -7,7 +7,7 @@ Proposed SLAM algorithm with detection of objects (OR) in the environment. Based
 Clone this repo and its modules by running 
 
 ```
-$ git clone --recursive https://github.com/PatrykMazurek/Robotics/tree/master/SLAM-OR
+$ git clone --recursive https://github.com/PatrykMazurek/SLAM-OR.git
 ```
 
 #### Install pySLAM in Your Working Python Environment
