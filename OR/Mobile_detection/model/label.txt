@@ -1,0 +1,9 @@
+car
+Van
+Truck
+person
+bus
+bicycle
+train
+Traffic light
+Traffic sign
