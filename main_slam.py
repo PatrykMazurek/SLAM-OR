@@ -16,44 +16,33 @@
 * You should have received a copy of the GNU General Public License
 * along with PYSLAM. If not, see <http://www.gnu.org/licenses/>.
 """
-
-import numpy as np
+import time
 import cv2
-import math
-import time, os, json
-
 from config import Config
-import tensorflow as tf
 from slam import Slam, SlamState
 from camera  import PinholeCamera
-from ground_truth import groundtruth_factory
 from dataset import dataset_factory
 
 #from mplot3d import Mplot3d
 #from mplot2d import Mplot2d
-from mplot_thread import Mplot2d, Mplot3d
 
-from display2D import Display2D
 from viewer3D import Viewer3D
-from utils import getchar, Printer 
+from utils import getchar
 
-from feature_tracker import feature_tracker_factory, FeatureTrackerTypes 
-from feature_manager import feature_manager_factory
-from feature_types import FeatureDetectorTypes, FeatureDescriptorTypes, FeatureInfo
-from feature_matcher import feature_matcher_factory, FeatureMatcherTypes
+from feature_tracker import feature_tracker_factory, FeatureTrackerTypes
 
 from feature_tracker_configs import FeatureTrackerConfigs
 
-from parameters import Parameters  
-
-from Yolo import box
-from Yolo.yolov3.utils import *
+# import OR as orobject
+from OR import ordetection
 
 if __name__ == "__main__":
 
     config = Config()
 
     dataset = dataset_factory(config.dataset_settings)
+
+    print(config.dataset_path)
 
     #groundtruth = groundtruth_factory(config.dataset_settings)
     groundtruth = None # not actually used by Slam() class; could be used for evaluating performances 
@@ -70,7 +59,7 @@ if __name__ == "__main__":
 
     # select your tracker configuration (see the file feature_tracker_configs.py) 
     # FeatureTrackerConfigs: SHI_TOMASI_ORB, FAST_ORB, ORB, ORB2, ORB2_FREAK, BRISK, AKAZE, FAST_FREAK, SIFT, ROOT_SIFT, SURF, SUPERPOINT, FAST_TFEAT
-    tracker_config = FeatureTrackerConfigs.FAST_FREAK
+    tracker_config = FeatureTrackerConfigs.ORB2
     tracker_config['num_features'] = num_features
     tracker_config['tracker_type'] = tracker_type
     
@@ -88,22 +77,19 @@ if __name__ == "__main__":
 
     file_name = config.get_name_data()
 
-    save_data = False    # zapisywanie danych do pliku
+    save_data = False    # Save point from slam to file
 
     #matched_points_plt = Mplot2d(xlabel='img id', ylabel='# matches',title='# matches')
 
-    # lista obiektów rozpoznanych na zdjęciu
-    # yolo = Load_Yolo_model()
-    if os.path.exists('Yolo/object_in_'+str(file_name)+'.json'):
-    #     print("Odczytuje listę obiektów")
-        with open('Yolo/object_in_'+str(file_name)+'.json', 'r' ) as rj:
-            obj = json.load(rj)
+    # neutral network initalize
+    neutral = ordetection.ordetection("yolo")
+    # neutral.init("yolo")
 
     list_box = list()
 
     do_step = False
     is_paused = True
-    print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+    # print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
     img_id = 0  #180, 340, 400   # you can start from a desired frame id if needed 
     while dataset.isOk():
             
@@ -122,21 +108,22 @@ if __name__ == "__main__":
                 time_start = time.time()                  
                 slam.track(img, img_id, timestamp)  # main SLAM function 
 
-
-                # detekcja obiektów w obrazie i dodanie ich do obrazu
+                # detection of objects in the image and adding them to the image
+                obj = neutral.detection(img, "yolo", img_id)
                 if slam.map.num_points() > 0:
-                    if len(obj[img_id]['obj']) > 0:
+                    if len(obj) > 0:
                         list_box = []
-                        for o in obj[img_id]['obj']:
-                            b = box.BoundBox(o['xmin'], o['ymin'], o['xmax'], o['ymax'], classes=o['class_ind'])
-                            b.score = o['score']
-                            b.color = o['color']
-                            b.v_lable = o['label']
+                        for o in obj:
+                            b = ordetection.BoundBox(o.xmin, o.ymin, o.xmax, o.ymax, classes=o.classes)
+                            b.score = o.score
+                            b.color = o.color
+                            b.v_lable = o.label
                             list_box.append(b)
                     else:
                         list_box = []
+                    # get list of object box from neutral network
+                    # list_box = neutral.detection(img)
 
-                    # list_box = detect_frame(yolo, img, 416, img_id)
 
                 img_draw = slam.map.draw_feature_trails(img, list_box)
 

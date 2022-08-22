@@ -1,7 +1,6 @@
 import numpy as np  # Scientific computing library
 import sys, json, os, time, datetime, cv2
-import box
-
+import OR.Mobile_detection.box as box
 # more information and example data
 # https://automaticaddison.com/how-to-detect-objects-in-video-using-mobilenet-ssd-in-opencv/
 # https://drive.google.com/drive/folders/13nAcSOx_S8QkbDw_oEimv0yRyfJazUNG
